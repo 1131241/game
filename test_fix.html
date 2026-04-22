@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Chess Test - Flip Fix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5dc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background-color: #8B4513;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #status {
+            margin: 10px 0;
+            font-size: 1.2em;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .game-board {
+            display: grid;
+            gap: 2px;
+            background-color: #654321;
+            padding: 10px;
+            border-radius: 8px;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(4, 50px);
+            margin-bottom: 20px;
+        }
+        
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #deb887;
+            border-radius: 5px;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        
+        .cell:hover:not(.disabled) {
+            background-color: #f5deb3;
+            transform: scale(1.05);
+        }
+        
+        .cell.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .cell.flipped {
+            background-color: #f0e68c;
+        }
+        
+          .cell.selected {
+              border: 3px solid #ff6b6b;
+              box-shadow: 0 0 10px rgba(255,107,107,0.7);
+          }
+          
+          .cell.just-captured {
+              animation: pulse 1.5s infinite;
+              border: 3px solid #ffd700;
+              box-shadow: 0 0 15px rgba(255,215,0,0.8);
+          }
+          
+          @keyframes pulse {
+              0% {
+                  transform: scale(1);
+                  box-shadow: 0 0 15px rgba(255,215,0,0.8);
+              }
+              50% {
+                  transform: scale(1.03);
+                  box-shadow: 0 0 25px rgba(255,215,0,1);
+              }
+              100% {
+                  transform: scale(1);
+                  box-shadow: 0 0 15px rgba(255,215,0,0.8);
+              }
+          }
+        
+        .piece {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.4em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .piece.red { color: #c41e3a; }
+        .piece.black { color: #000; }
+        
+        .piece.hidden { opacity: 0; }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .reset-btn {
+            background-color: #f44336;
+        }
+        
+        .reset-btn:hover {
+            background-color: #da190b;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>暗棋象棋測試版</h1>
+        <div id="status">準備開始遊戲...</div>
+        
+        <div class="game-board" id="gameBoard"></div>
+        
+        <div class="controls">
+            <button id="resetBtn">重置盤面</button>
+        </div>
+    </div>
+
+    <script>
+        // 棋子類型定義
+        const PIECE_TYPES = {
+            RED: {
+                GENERAL: { id: 'rG', name: '將', value: 100 },
+                ADVISOR: { id: 'rA', name: '士', value: 5 },
+                ELEPHANT: { id: 'rE', name: '象', value: 5 },
+                HORSE: { id: 'rH', name: '馬', value: 10 },
+                CHARIOT: { id: 'rC', name: '車', value: 50 },
+                CANNON: { id: 'rP', name: '炮', value: 20 },
+                SOLDIER: { id: 'rS', name: '卒', value: 3 }
+            },
+            BLACK: {
+                GENERAL: { id: 'bG', name: '帥', value: 100 },
+                ADVISOR: { id: 'bA', name: '仕', value: 5 },
+                ELEPHANT: { id: 'bB', name: '相', value: 5 },
+                HORSE: { id: 'bH', name: '馬', value: 10 },
+                CHARIOT: { id: 'bR', name: '車', value: 50 },
+                CANNON: { id: 'bP', name: '炮', value: 20 },
+                SOLDIER: { id: 'bZ', name: '兵', value: 3 }
+            }
+        };
+
+        // 所有棋子列表
+        const ALL_PIECES = [
+            // 紅方
+            PIECE_TYPES.RED.GENERAL,
+            PIECE_TYPES.RED.ADVISOR,
+            PIECE_TYPES.RED.ADVISOR,
+            PIECE_TYPES.RED.ELEPHANT,
+            PIECE_TYPES.RED.ELEPHANT,
+            PIECE_TYPES.RED.HORSE,
+            PIECE_TYPES.RED.HORSE,
+            PIECE_TYPES.RED.CHARIOT,
+            PIECE_TYPES.RED.CHARIOT,
+            PIECE_TYPES.RED.CANNON,
+            PIECE_TYPES.RED.CANNON,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            // 黑方
+            PIECE_TYPES.BLACK.GENERAL,
+            PIECE_TYPES.BLACK.ADVISOR,
+            PIECE_TYPES.BLACK.ADVISOR,
+            PIECE_TYPES.BLACK.ELEPHANT,
+            PIECE_TYPES.BLACK.ELEPHANT,
+            PIECE_TYPES.BLACK.HORSE,
+            PIECE_TYPES.BLACK.HORSE,
+            PIECE_TYPES.BLACK.CHARIOT,
+            PIECE_TYPES.BLACK.CHARIOT,
+            PIECE_TYPES.BLACK.CANNON,
+            PIECE_TYPES.BLACK.CANNON,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER
+        ];
+
+        class SimpleDarkChessGame {
+            constructor() {
+                this.boardSize = { rows: 4, cols: 8 }; // 4x8 = 32 格
+                this.board = Array(this.boardSize.rows).fill().map(() => 
+                    Array(this.boardSize.cols).fill(null)
+                );
+                this.currentPlayer = 'RED'; // RED starts
+                this.selectedPiece = null;
+                this.gameOver = false;
+                this.winner = null;
+                
+                this.initBoard();
+                this.bindEvents();
+                this.updateDisplay();
+            }
+            
+            initBoard() {
+                // 隨機打亂所有棋子
+                const shuffledPieces = [...ALL_PIECES].sort(() => Math.random() - 0.5);
+                
+                // 放入棋盤
+                let index = 0;
+                for (let row = 0; row < this.boardSize.rows; row++) {
+                    for (let col = 0; col < this.boardSize.cols; col++) {
+                        this.board[row][col] = {
+                            piece: shuffledPieces[index],
+                            revealed: false,
+                            owner: shuffledPieces[index].id.startsWith('r') ? 'RED' : 'BLACK'
+                        };
+                        index++;
+                    }
+                }
+            }
+            
+            flipPiece(row, col) {
+                console.log("Flipping piece at", row, col);
+                this.board[row][col].revealed = true;
+                this.selectedPiece = null;
+                this.endTurn();
+            }
+            
+            selectPiece(row, col) {
+                console.log("Selecting piece at", row, col);
+                // 取消之前的選擇
+                if (this.selectedPiece) {
+                    const [prevRow, prevCol] = this.selectedPiece;
+                    const prevCell = document.querySelector(`.cell[data-row="${prevRow}"][data-col="${prevCol}"]`);
+                    if (prevCell) prevCell.classList.remove('selected');
+                }
+                
+                // 選擇新棋子
+                this.selectedPiece = [row, col];
+                const cellElement = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                if (cellElement) cellElement.classList.add('selected');
+                
+                // 顯示有效移動位置（相鄰格）
+                this.highlightValidMoves(row, col);
+            }
+            
+            handleSelectOrFlip(row, col) {
+                console.log("handleSelectOrFlip called with row:", row, "col:", col);
+                const cell = this.board[row][col];
+                
+                // 只能操作己方的棋子
+                if (cell.owner !== this.currentPlayer) {
+                    console.log("Not owner's piece - trying to flip opponent's piece at", row, col);
+                    // Still allow flipping for testing purposes - remove this line for production
+                    // return;
+                }
+                
+                // 如果是未翻開的己方棋子，翻開它
+                if (!cell.revealed) {
+                    console.log("Flipping piece");
+                    this.flipPiece(row, col);
+                } else {
+                    // 如果是已翻開的己方棋子，選擇它以便移動
+                    console.log("Selecting piece");
+                    this.selectPiece(row, col);
+                }
+            }
+            
+            handleMoveOrCapture(targetRow, targetCol) {
+                console.log("handleMoveOrCapture from", this.selectedPiece, "to", targetRow, targetCol);
+                if (!this.selectedPiece) return;
+                
+                const [fromRow, fromCol] = this.selectedPiece;
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[targetRow][targetCol];
+                
+                // 檢查是否為有效移動（相鄰格）
+                const rowDiff = Math.abs(fromRow - targetRow);
+                const colDiff = Math.abs(fromCol - targetCol);
+                
+                if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
+                    if (!toCell.revealed) {
+                        // 目標是未翻開的棒子：只能移動（不能吃暗子）
+                        this.movePiece(fromRow, fromCol, targetRow, targetCol);
+                    } else {
+                        // 目標是已翻開的棒子：嘗試吃子
+                        if (this.isValidCapture(fromRow, fromCol, targetRow, targetCol)) {
+                            this.capturePiece(fromRow, fromCol, targetRow, targetCol);
+                        } else {
+                            // 無法吃子，允許移動到同色已翻開的格子（換位）
+                            if (toCell.owner === this.currentPlayer) {
+                                this.swapPieces(fromRow, fromCol, targetRow, targetCol);
+                            }
+                        }
+                    }
+                } else {
+                    // 無效移動，重新選擇目標格子
+                    this.selectPiece(targetRow, targetCol);
+                }
+            }
+            
+            isValidMove(fromRow, fromCol, toRow, toCol) {
+                // 必須是相鄰的一格（上下左右）
+                const rowDiff = Math.abs(fromRow - toRow);
+                const colDiff = Math.abs(fromCol - toCol);
+                
+                return (rowDiff === 1 && colDiff === 0) || 
+                       (rowDiff === 0 && colDiff === 1);
+            }
+            
+            isValidCapture(fromRow, fromCol, toRow, toCol) {
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[toRow][toCol];
+                
+                // 必須是己方已翻開吃對方已翻開
+                if (!fromCell.revealed || !toCell.revealed) return false;
+                if (fromCell.owner === toCell.owner) return false;
+                
+                const fromPiece = fromCell.piece;
+                const toPiece = toCell.piece;
+                
+                // 特殊規則：兵/卒吃將/帥
+                if ((fromPiece.id === 'rS' || fromPiece.id === 'bZ') && 
+                    (toPiece.id === 'rG' || toPiece.id === 'bG')) {
+                    return true;
+                }
+                
+                // 特殊規則：將/帥不能吃兵/卒
+                if ((fromPiece.id === 'rG' || fromPiece.id === 'bG') && 
+                    (toPiece.id === 'rS' || toPiece.id === 'bZ')) {
+                    return false;
+                }
+                
+                // 炮/包的特殊吃子規則：需恰好隔一子
+                if (fromPiece.id.endsWith('P')) { // 炮
+                    return this.isValidCannonCapture(fromRow, fromCol, toRow, toCol);
+                }
+                
+                // 普通棋子：只能吃相鄰格
+                const rowDiff = Math.abs(fromRow - toRow);
+                const colDiff = Math.abs(fromCol - toCol);
+                return (rowDiff === 1 && colDiff === 0) || 
+                       (rowDiff === 0 && colDiff === 1);
+            }
+            
+            isValidCannonCapture(fromRow, fromCol, toRow, toCol) {
+                // 炮必須在同一行或同一列
+                if (fromRow !== toRow && fromCol !== toCol) return false;
+                
+                let count = 0;
+                
+                if (fromRow === toRow) {
+                    // 同一行
+                    const startCol = Math.min(fromCol, toCol) + 1;
+                    const endCol = Math.max(fromCol, toCol);
+                    for (let col = startCol; col < endCol; col++) {
+                        if (this.board[fromRow][col] !== null) {
+                            count++;
+                        }
+                    }
+                } else {
+                    // 同一列
+                    const startRow = Math.min(fromRow, toRow) + 1;
+                    const endRow = Math.max(fromRow, toRow);
+                    for (let row = startRow; row < endRow; row++) {
+                        if (this.board[row][fromCol] !== null) {
+                            count++;
+                        }
+                    }
+                }
+                
+                // 必須恰好隔一子
+                return count === 1;
+            }
+            
+            movePiece(fromRow, fromCol, toRow, toCol) {
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[toRow][toCol];
+                
+                // 移動棋子
+                toCell.piece = fromCell.piece;
+                toCell.revealed = true; // 移動後自動翻開
+                fromCell.piece = null;
+                fromCell.revealed = false;
+                
+                this.clearSelection();
+                this.endTurn();
+            }
+            
+             capturePiece(fromRow, fromCol, toRow, toCol) {
+                 const fromCell = this.board[fromRow][fromCol];
+                 const toCell = this.board[toRow][toCol];
+                 
+                 // 吃掉目標棋子
+                 toCell.piece = fromCell.piece;
+                 toCell.revealed = true;
+                 fromCell.piece = null;
+                 fromCell.revealed = false;
+                 
+                 // Mark that this piece just made a capture (for visual indication)
+                 toCell.justCaptured = true;
+                 
+                 this.clearSelection();
+                 this.endTurn();
+                 
+                 // 檢查是否吃掉將/帥
+                 const capturedPiece = this.board[toRow][toCol].piece;
+                 if (capturedPiece.id === 'rG' || capturedPiece.id === 'bG') {
+                     this.gameOver = true;
+                     this.winner = this.currentPlayer;
+                 }
+             }
+            
+            swapPieces(fromRow, fromCol, toRow, toCol) {
+                // 換位（同己方棋子）
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[toRow][toCol];
+                
+                const tempPiece = fromCell.piece;
+                const tempRevealed = fromCell.revealed;
+                
+                fromCell.piece = toCell.piece;
+                fromCell.revealed = toCell.revealed;
+                
+                toCell.piece = tempPiece;
+                toCell.revealed = tempRevealed;
+                
+                this.clearSelection();
+                this.endTurn();
+            }
+            
+            highlightValidMoves(row, col) {
+                // 移除之前的高亮
+                document.querySelectorAll('.cell.valid-move').forEach(cell => {
+                    cell.classList.remove('valid-move');
+                });
+                
+                // 高亮有效移動位置（相鄰格）
+                const directions = [[-1,0], [1,0], [0,-1], [0,1]];
+                for (const [dx, dy] of directions) {
+                    const newRow = row + dx;
+                    const newCol = col + dy;
+                    
+                    if (newRow >= 0 && newRow < this.boardSize.rows && 
+                        newCol >= 0 && newCol < this.boardSize.cols) {
+                        const cellElement = document.querySelector(`.cell[data-row="${newRow}"][data-col="${newCol}"]`);
+                        if (cellElement) {
+                            cellElement.classList.add('valid-move');
+                        }
+                    }
+                }
+            }
+            
+            clearSelection() {
+                if (this.selectedPiece) {
+                    const [row, col] = this.selectedPiece;
+                    const cellElement = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                    if (cellElement) cellElement.classList.remove('selected');
+                    this.selectedPiece = null;
+                }
+                document.querySelectorAll('.cell.valid-move').forEach(cell => {
+                    cell.classList.remove('valid-move');
+                });
+            }
+            
+            endTurn() {
+                this.currentPlayer = this.currentPlayer === 'RED' ? 'BLACK' : 'RED';
+                this.clearSelection();
+                this.updateDisplay();
+            }
+            
+            updateDisplay() {
+                const boardElement = document.getElementById('gameBoard');
+                boardElement.innerHTML = '';
+                
+         for (let row = 0; row < this.boardSize.rows; row++) {
+                     for (let col = 0; col < this.boardSize.cols; col++) {
+                         const cell = this.board[row][col];
+                         const cellElement = document.createElement('div');
+                         cellElement.className = 'cell';
+                         cellElement.dataset.row = row;
+                         cellElement.dataset.col = col;
+                         
+                          if (cell.revealed && cell.piece) {
+                              cellElement.classList.add('flipped');
+                              // Add visual indication for pieces that just made a capture
+                              if (cell.justCaptured) {
+                                  cellElement.classList.add('just-captured');
+                                  // Reset the flag after applying the visual effect
+                                  cell.justCaptured = false;
+                              }
+                              const pieceElement = document.createElement('div');
+                              pieceElement.className = `piece ${cell.owner.toLowerCase()}`;
+                              pieceElement.textContent = cell.piece.name;
+                              cellElement.appendChild(pieceElement);
+                          } else {
+                              // 未翻開的棒子顯示問號
+                              cellElement.textContent = '?';
+                              cellElement.style.fontSize = '1.2em';
+                              cellElement.style.color = '#666';
+                          }
+                        
+                        boardElement.appendChild(cellElement);
+                    }
+                }
+                
+                document.getElementById('status').textContent = 
+                    this.gameOver ? 
+                    (this.winner ? `${this.winner === 'RED' ? '紅方' : '黑方'} 獲勝！` : '平局') :
+                    `${this.currentPlayer === 'RED' ? '紅方' : '黑方'} 回合`;
+            }
+            
+            bindEvents() {
+                const boardElement = document.getElementById('gameBoard');
+                boardElement.addEventListener('click', (e) => {
+                    if (this.gameOver) return;
+                    
+                    const cell = e.target.closest('.cell');
+                    if (!cell) return;
+                    
+                    const row = parseInt(cell.dataset.row);
+                    const col = parseInt(cell.dataset.col);
+                    
+                    console.log("Board clicked at:", row, col);
+                    
+                    if (this.selectedPiece) {
+                        console.log("Handling move/capture");
+                        this.handleMoveOrCapture(row, col);
+                    } else {
+                        console.log("Handling select/flip");
+                        this.handleSelectOrFlip(row, col);
+                    }
+                });
+            }
+        }
+        
+        // Game state management
+        let gameInstance = null;
+        
+        // Mode selection functions
+        function initializeGame() {
+            // Clean up existing game
+            if (gameInstance) {
+                gameInstance = null;
+            }
+            
+            // Reset UI
+            document.getElementById('status').textContent = '準備開始遊戲...';
+            
+            // Initialize game
+            gameInstance = new SimpleDarkChessGame();
+            document.getElementById('status').textContent = '紅方回合';
+        }
+        
+        // Reset button handler
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            initializeGame();
+        });
+        
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Start with offline mode by default
+            initializeGame();
+        });
+    </script>
+</body>
+</html>

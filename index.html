@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>暗棋象棋 - Dark Chess Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5dc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background-color: #8B4513;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .mode-selection {
+            background-color: rgba(0,0,0,0.2);
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .mode-selection h2 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .mode-options {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .mode-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            min-width: 120px;
+        }
+        
+        .mode-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .mode-btn:active {
+            transform: translateY(0);
+        }
+        
+        .game-interface {
+            display: none;
+        }
+        
+        .game-interface.visible {
+            display: block;
+        }
+        
+        .game-info {
+            background-color: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        
+        .turn-indicator {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        #connectionStatus {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .game-board {
+            display: grid;
+            gap: 2px;
+            background-color: #654321;
+            padding: 10px;
+            border-radius: 8px;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(4, 50px);
+            touch-action: manipulation;
+            margin-bottom: 20px;
+        }
+        
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #deb887;
+            border-radius: 5px;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        
+        .cell:hover:not(.disabled) {
+            background-color: #f5deb3;
+            transform: scale(1.05);
+        }
+        
+        .cell.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .cell.flipped {
+            background-color: #f0e68c;
+        }
+        
+        .cell.selected {
+            border: 3px solid #ff6b6b;
+            box-shadow: 0 0 10px rgba(255,107,107,0.7);
+        }
+        
+        .cell.valid-move {
+            border: 2px solid #4ECDC4;
+            background-color: #e0f7f9;
+        }
+        
+        .piece {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.4em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .piece.red {
+            color: #c41e3a;
+        }
+        
+        .piece.black {
+            color: #000;
+        }
+        
+        .piece.hidden {
+            opacity: 0;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .reset-btn {
+            background-color: #f44336;
+        }
+        
+        .reset-btn:hover {
+            background-color: #da190b;
+        }
+        
+        #surrenderBtn {
+            background-color: #ff9800;
+        }
+        
+        #surrenderBtn:hover {
+            background-color: #e68900;
+        }
+        
+        #onlineControls {
+            background-color: rgba(0,0,0,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        #onlineControls input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 150px;
+            font-size: 1em;
+        }
+        
+        #onlineControls button {
+            padding: 10px 15px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        #onlineControls button:hover {
+            background-color: #0b7dda;
+        }
+        
+        #aiControls {
+            background-color: rgba(0,0,0,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #aiControls label {
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        #aiControls select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            color: #333;
+            font-size: 0.9em;
+        }
+        
+        .instructions {
+            background-color: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            font-weight: bold;
+            border-radius: 10px;
+            z-index: 10;
+            display: none;
+        }
+        
+        .game-over-content {
+            background-color: rgba(0,0,0,0.8);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Mode Selection -->
+        <div id="modeSelection" class="mode-selection">
+            <h2>選擇遊戲模式</h2>
+            <div class="mode-options">
+                <button class="mode-btn" onclick="selectMode('offline')">離線雙人</button>
+                <button class="mode-btn" onclick="selectMode('online')">線上對戰</button>
+                <button class="mode-btn" onclick="selectMode('ai')">對戰AI</button>
+            </div>
+        </div>
+        
+        <!-- Game Interface -->
+        <div id="gameInterface" class="game-interface" style="display: none;">
+            <div class="game-info">
+                <div class="turn-indicator" id="turnIndicator">紅方回合</div>
+                <div id="status">準備開始遊戲...</div>
+                <div id="connectionStatus">已連接</div>
+            </div>
+            
+            <div class="game-board" id="gameBoard"></div>
+            
+            <div class="controls">
+                <button id="newGameBtn">新遊戲</button>
+                <button id="resetBtn" class="reset-btn">重置盤面</button>
+                <button id="surrenderBtn">投降</button>
+            </div>
+            
+            <!-- Online Specific Controls -->
+            <div id="onlineControls" style="display: none;">
+                <input type="text" id="roomCodeInput" placeholder="輸入房間號" maxlength="6">
+                <button id="joinRoomBtn">加入房間</button>
+                <button id="createRoomBtn">創建房間</button>
+                <button id="matchmakeBtn">隨機配對</button>
+                <div id="roomInfo"></div>
+            </div>
+            
+            <!-- AI Specific Controls -->
+            <div id="aiControls" style="display: none;">
+                <label for="aiDifficulty">AI難度:</label>
+                <select id="aiDifficulty">
+                    <option value="easy">簡單</option>
+                    <option value="medium" selected>中等</option>
+                    <option value="high">困難</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>遊戲規則:</h3>
+            <ul>
+                <li>棋盤使用半區（8×4=32格），雙方32枚棋子混合面朝下放置</li>
+                <li>每回合只能執行一項：移動、吃子或翻棋</li>
+                <li>移動：己方已翻開棋子可移動一格（上下左右）</li>
+                <li>吃子：依照大子吃小子規則，但有特殊規則：</li>
+                <li>&nbsp;&nbsp;・普通棋子：只能吃相鄰格</li>
+                <li>&nbsp;&nbsp;・包/炮：需恰好隔一子才能吃（中間可為任何棒子）</li>
+                <li>&nbsp;&nbsp;・兵/卒可吃將/帥，但將/帥不能吃兵/卒</li>
+                <li>翻棋：翻開己方未翻開的棒子</li>
+                <li>只能操作己方已翻開的棒子</li>
+                <li>只能吃掉對方已翻開的棒子</li>
+                <li>吃掉對方將/帥即獲勝</li>
+            </ul>
+        </div>
+        
+        <div class="game-over" id="gameOver">
+            <div class="game-over-content">
+                <div id="gameOverText"></div>
+                <button id="playAgainBtn">再玩一次</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 棋子類型定義
+        const PIECE_TYPES = {
+            RED: {
+                GENERAL: { id: 'rG', name: '將', value: 100 },
+                ADVISOR: { id: 'rA', name: '士', value: 5 },
+                ELEPHANT: { id: 'rE', name: '象', value: 5 },
+                HORSE: { id: 'rH', name: '馬', value: 10 },
+                CHARIOT: { id: 'rC', name: '車', value: 50 },
+                CANNON: { id: 'rP', name: '炮', value: 20 },
+                SOLDIER: { id: 'rS', name: '卒', value: 3 }
+            },
+            BLACK: {
+                GENERAL: { id: 'bG', name: '帥', value: 100 },
+                ADVISOR: { id: 'bA', name: '仕', value: 5 },
+                ELEPHANT: { id: 'bB', name: '相', value: 5 },
+                HORSE: { id: 'bH', name: '馬', value: 10 },
+                CHARIOT: { id: 'bR', name: '車', value: 50 },
+                CANNON: { id: 'bP', name: '炮', value: 20 },
+                SOLDIER: { id: 'bZ', name: '兵', value: 3 }
+            }
+        };
+
+        // 所有棋子列表
+        const ALL_PIECES = [
+            // 紅方
+            PIECE_TYPES.RED.GENERAL,
+            PIECE_TYPES.RED.ADVISOR,
+            PIECE_TYPES.RED.ADVISOR,
+            PIECE_TYPES.RED.ELEPHANT,
+            PIECE_TYPES.RED.ELEPHANT,
+            PIECE_TYPES.RED.HORSE,
+            PIECE_TYPES.RED.HORSE,
+            PIECE_TYPES.RED.CHARIOT,
+            PIECE_TYPES.RED.CHARIOT,
+            PIECE_TYPES.RED.CANNON,
+            PIECE_TYPES.RED.CANNON,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            PIECE_TYPES.RED.SOLDIER,
+            // 黑方
+            PIECE_TYPES.BLACK.GENERAL,
+            PIECE_TYPES.BLACK.ADVISOR,
+            PIECE_TYPES.BLACK.ADVISOR,
+            PIECE_TYPES.BLACK.ELEPHANT,
+            PIECE_TYPES.BLACK.ELEPHANT,
+            PIECE_TYPES.BLACK.HORSE,
+            PIECE_TYPES.BLACK.HORSE,
+            PIECE_TYPES.BLACK.CHARIOT,
+            PIECE_TYPES.BLACK.CHARIOT,
+            PIECE_TYPES.BLACK.CANNON,
+            PIECE_TYPES.BLACK.CANNON,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER,
+            PIECE_TYPES.BLACK.SOLDIER
+        ];
+
+        class DarkChessGame {
+            constructor() {
+                this.boardSize = { rows: 4, cols: 8 }; // 4x8 = 32 格
+                this.board = Array(this.boardSize.rows).fill().map(() => 
+                    Array(this.boardSize.cols).fill(null)
+                );
+                this.currentPlayer = 'RED'; // RED starts
+                this.selectedPiece = null;
+                this.gameOver = false;
+                this.winner = null;
+                
+                this.initBoard();
+            }
+            
+            initBoard() {
+                // 隨機打亂所有棋子
+                const shuffledPieces = [...ALL_PIECES].sort(() => Math.random() - 0.5);
+                
+                // 放入棋盤
+                let index = 0;
+                for (let row = 0; row < this.boardSize.rows; row++) {
+                    for (let col = 0; col < this.boardSize.cols; col++) {
+                        this.board[row][col] = {
+                            piece: shuffledPieces[index],
+                            revealed: false,
+                            owner: shuffledPieces[index].id.startsWith('r') ? 'RED' : 'BLACK'
+                        };
+                        index++;
+                    }
+                }
+            }
+            
+             flipPiece(row, col) {
+                 this.board[row][col].revealed = true;
+             }
+            
+              selectPiece(row, col) {
+                  // 取消之前的選擇
+                  if (this.selectedPiece) {
+                      const [prevRow, prevCol] = this.selectedPiece;
+                      const prevCell = document.querySelector(`.cell[data-row="${prevRow}"][data-col="${prevCol}"]`);
+                      if (prevCell) prevCell.classList.remove('selected');
+                  }
+                  
+                  // 選擇新棋子
+                  this.selectedPiece = [row, col];
+                  const cellElement = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                  if (cellElement) cellElement.classList.add('selected');
+                  
+                  // 顯示有效移動位置
+                  this.highlightValidMoves(row, col);
+              }
+
+               handleSelectOrFlip(row, col) {
+                   const cell = this.board[row][col];
+                   
+                   // 只能操作己方的棋子
+                   if (cell.owner !== this.currentPlayer) {
+                       return;
+                   }
+                   
+                   // 如果是未翻開的己方棋子，翻開它
+                   if (!cell.revealed) {
+                       this.flipPiece(row, col);
+                       this.clearSelection();
+                       this.endTurn();
+                   } else {
+                       // 如果是已翻開的己方棋子，選擇它以便移動或吃子
+                       this.selectPiece(row, col);
+                   }
+               }
+            
+            handleMoveOrCapture(targetRow, targetCol) {
+                if (!this.selectedPiece) return;
+                
+                const [fromRow, fromCol] = this.selectedPiece;
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[targetRow][targetCol];
+                
+                // 檢查是否為有效移動
+                if (this.isValidMove(fromRow, fromCol, targetRow, targetCol)) {
+                    if (!toCell.revealed) {
+                        // 目標是未翻開的棒子：只能移動（不能吃暗子）
+                        this.movePiece(fromRow, fromCol, targetRow, targetCol);
+                    } else {
+                        // 目標是已翻開的棒子：嘗試吃子
+                        if (this.isValidCapture(fromRow, fromCol, targetRow, targetCol)) {
+                            this.capturePiece(fromRow, fromCol, targetRow, targetCol);
+                        } else {
+                            // 無法吃子，嘗試移動（如果是空格或同色？但在我們規則中沒有空格）
+                            // 但為了安全，我們允許移動到同色已翻開的格子（換位）
+                            if (toCell.owner === this.currentPlayer) {
+                                this.swapPieces(fromRow, fromCol, targetRow, targetCol);
+                            }
+                        }
+                    }
+                } else {
+                    // 無效移動，重新選擇
+                    this.selectPiece(targetRow, targetCol);
+                }
+            }
+            
+            isValidMove(fromRow, fromCol, toRow, toCol) {
+                // 必須是相饿的一格（上下左右）
+                const rowDiff = Math.abs(fromRow - toRow);
+                const colDiff = Math.abs(fromCol - toCol);
+                
+                return (rowDiff === 1 && colDiff === 0) || 
+                       (rowDiff === 0 && colDiff === 1);
+            }
+            
+            isValidCapture(fromRow, fromCol, toRow, toCol) {
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[toRow][toCol];
+                
+                // 必須是己方已翻開吃對方已翻開
+                if (!fromCell.revealed || !toCell.revealed) return false;
+                if (fromCell.owner === toCell.owner) return false;
+                
+                const fromPiece = fromCell.piece;
+                const toPiece = toCell.piece;
+                
+                // 特殊規則：兵/卒吃將/帥
+                if ((fromPiece.id === 'rS' || fromPiece.id === 'bZ') && 
+                    (toPiece.id === 'rG' || toPiece.id === 'bG')) {
+                    return true;
+                }
+                
+                // 特殊規則：將/帥不能吃兵/卒
+                if ((fromPiece.id === 'rG' || fromPiece.id === 'bG') && 
+                    (toPiece.id === 'rS' || toPiece.id === 'bZ')) {
+                    return false;
+                }
+                
+                // 炮/包的特殊吃子規則：需恰好隔一子
+                if (fromPiece.id.endsWith('P')) { // 炮
+                    return this.isValidCannonCapture(fromRow, fromCol, toRow, toCol);
+                }
+                
+                // 普通棋子：只能吃相鄰格
+                const rowDiff = Math.abs(fromRow - toRow);
+                const colDiff = Math.abs(fromCol - toCol);
+                return (rowDiff === 1 && colDiff === 0) || 
+                       (rowDiff === 0 && colDiff === 1);
+            }
+            
+            isValidCannonCapture(fromRow, fromCol, toRow, toCol) {
+                // 炮必須在同一行或同一列
+                if (fromRow !== toRow && fromCol !== toCol) return false;
+                
+                let count = 0;
+                
+                if (fromRow === toRow) {
+                    // 同一行
+                    const startCol = Math.min(fromCol, toCol) + 1;
+                    const endCol = Math.max(fromCol, toCol);
+                    for (let col = startCol; col < endCol; col++) {
+                        if (this.board[fromRow][col] !== null) {
+                            count++;
+                        }
+                    }
+                } else {
+                    // 同一列
+                    const startRow = Math.min(fromRow, toRow) + 1;
+                    const endRow = Math.max(fromRow, toRow);
+                    for (let row = startRow; row < endRow; row++) {
+                        if (this.board[row][fromCol] !== null) {
+                            count++;
+                        }
+                    }
+                }
+                
+                // 必須恰好隔一子
+                return count === 1;
+            }
+            
+            movePiece(fromRow, fromCol, toRow, toCol) {
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[toRow][toCol];
+                
+                // 移動棋子
+                toCell.piece = fromCell.piece;
+                toCell.revealed = true; // 移動後自動翻開
+                fromCell.piece = null;
+                fromCell.revealed = false;
+                
+                this.clearSelection();
+                this.endTurn();
+            }
+            
+            capturePiece(fromRow, fromCol, toRow, toCol) {
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[toRow][toCol];
+                
+                // 吃掉目標棋子
+                toCell.piece = fromCell.piece;
+                toCell.revealed = true;
+                fromCell.piece = null;
+                fromCell.revealed = false;
+                
+                this.clearSelection();
+                this.endTurn();
+                
+                // 檢查是否吃掉將/帥
+                const capturedPiece = this.board[toRow][toCol].piece;
+                if (capturedPiece.id === 'rG' || capturedPiece.id === 'bG') {
+                    this.gameOver = true;
+                    this.winner = this.currentPlayer;
+                }
+            }
+            
+            swapPieces(fromRow, fromCol, toRow, toCol) {
+                // 換位（同己方棋子）
+                const fromCell = this.board[fromRow][fromCol];
+                const toCell = this.board[toRow][toCol];
+                
+                const tempPiece = fromCell.piece;
+                const tempRevealed = fromCell.revealed;
+                
+                fromCell.piece = toCell.piece;
+                fromCell.revealed = toCell.revealed;
+                
+                toCell.piece = tempPiece;
+                toCell.revealed = tempRevealed;
+                
+                this.clearSelection();
+                this.endTurn();
+            }
+            
+            highlightValidMoves(row, col) {
+                // 移除之前的高亮
+                document.querySelectorAll('.cell.valid-move').forEach(cell => {
+                    cell.classList.remove('valid-move');
+                });
+                
+                // 高亮有效移動位置（相鄰格）
+                const directions = [[-1,0], [1,0], [0,-1], [0,1]];
+                for (const [dx, dy] of directions) {
+                    const newRow = row + dx;
+                    const newCol = col + dy;
+                    
+                    if (newRow >= 0 && newRow < this.boardSize.rows && 
+                        newCol >= 0 && newCol < this.boardSize.cols) {
+                        const cellElement = document.querySelector(`.cell[data-row="${newRow}"][data-col="${newCol}"]`);
+                        if (cellElement) {
+                            cellElement.classList.add('valid-move');
+                        }
+                    }
+                }
+            }
+            
+            clearSelection() {
+                if (this.selectedPiece) {
+                    const [row, col] = this.selectedPiece;
+                    const cellElement = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                    if (cellElement) cellElement.classList.remove('selected');
+                    this.selectedPiece = null;
+                }
+                document.querySelectorAll('.cell.valid-move').forEach(cell => {
+                    cell.classList.remove('valid-move');
+                });
+            }
+            
+            endTurn() {
+                this.currentPlayer = this.currentPlayer === 'RED' ? 'BLACK' : 'RED';
+                this.clearSelection();
+                this.updateDisplay();
+            }
+            
+            updateDisplay() {
+                const boardElement = document.getElementById('gameBoard');
+                boardElement.innerHTML = '';
+                
+                for (let row = 0; row < this.boardSize.rows; row++) {
+                    for (let col = 0; col < this.boardSize.cols; col++) {
+                        const cell = this.board[row][col];
+                        const cellElement = document.createElement('div');
+                        cellElement.className = 'cell';
+                        cellElement.dataset.row = row;
+                        cellElement.dataset.col = col;
+                        
+                        if (cell.revealed && cell.piece) {
+                            cellElement.classList.add('flipped');
+                            const pieceElement = document.createElement('div');
+                            pieceElement.className = `piece ${cell.owner.toLowerCase()}`;
+                            pieceElement.textContent = cell.piece.name;
+                            cellElement.appendChild(pieceElement);
+                        } else {
+                            // 未翻開的棒子顯示問號或背面圖案
+                            cellElement.textContent = '?';
+                            cellElement.style.fontSize = '1.2em';
+                            cellElement.style.color = '#666';
+                        }
+                        
+                        boardElement.appendChild(cellElement);
+                    }
+                }
+                
+                document.getElementById('turnIndicator').textContent = 
+                    `${this.currentPlayer === 'RED' ? '紅方' : '黑方'} 回合`;
+                
+                document.getElementById('status').textContent = 
+                    this.gameOver ? 
+                    (this.winner ? `${this.winner === 'RED' ? '紅方' : '黑方'} 獲勝！` : '平局') :
+                    '請選擇行動：翻棋、移動或吃子';
+            }
+        }
+        
+        // Game state management
+        let currentGameMode = 'offline'; // offline, online, ai
+        let gameInstance = null;
+        let aiPlayer = null;
+        let socket = null;
+        let playerColor = null; // 'RED' or 'BLACK' for online games
+        let isMyTurn = false;
+        
+        // Mode selection functions
+        function selectMode(mode) {
+            currentGameMode = mode;
+            document.getElementById('modeSelection').style.display = 'none';
+            document.getElementById('gameInterface').style.display = 'block';
+            document.getElementById('gameInterface').classList.add('visible');
+            
+            // Show/hide mode-specific controls
+            document.getElementById('onlineControls').style.display = 
+                mode === 'online' ? 'block' : 'none';
+            document.getElementById('aiControls').style.display = 
+                mode === 'ai' ? 'block' : 'none';
+            
+            // Initialize game based on mode
+            initializeGame();
+        }
+        
+        function initializeGame() {
+            // Clean up existing game
+            if (gameInstance) {
+                gameInstance = null;
+            }
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+            if (aiPlayer) {
+                aiPlayer = null;
+            }
+            
+            // Reset UI
+            document.getElementById('status').textContent = '準備開始遊戲...';
+            document.getElementById('connectionStatus').textContent = 
+                currentGameMode === 'online' ? '連接中...' : '已連接';
+            document.getElementById('roomInfo').textContent = '';
+            
+            // Initialize based on mode
+            switch (currentGameMode) {
+                case 'offline':
+                    startOfflineGame();
+                    break;
+                case 'online':
+                    startOnlineGame();
+                    break;
+                case 'ai':
+                    startAIGame();
+                    break;
+            }
+        }
+        
+        function startOfflineGame() {
+            gameInstance = new DarkChessGame();
+            document.getElementById('status').textContent = '紅方回合';
+        }
+        
+        function startAIGame() {
+            const difficulty = document.getElementById('aiDifficulty').value;
+            gameInstance = new DarkChessGame();
+            aiPlayer = new AIPlayer(difficulty);
+            
+            // Randomly assign player color
+            playerColor = Math.random() < 0.5 ? 'RED' : 'BLACK';
+            document.getElementById('status').textContent = 
+                `您是${playerColor === 'RED' ? '紅方' : '黑方'}`;
+            
+            // If AI goes first, make AI move
+            if (playerColor === 'BLACK') {
+                document.getElementById('status').textContent = 'AI思考中...';
+                setTimeout(() => makeAIMove(), 500 + Math.random() * 1000);
+            }
+        }
+        
+        function startOnlineGame() {
+            // For demo purposes, we'll simulate online play with localStorage
+            // In a real implementation, this would use WebSocket or similar
+            document.getElementById('connectionStatus').textContent = '本地模擬模式';
+            document.getElementById('status').textContent = '等待對手...';
+            
+            // Simulate finding an opponent after a short delay
+            setTimeout(() => {
+                // Randomly assign player color
+                playerColor = Math.random() < 0.5 ? 'RED' : 'BLACK';
+                isMyTurn = (playerColor === 'RED'); // RED starts first
+                
+                document.getElementById('connectionStatus').textContent = '已連接';
+                document.getElementById('status').textContent = 
+                    `遊戲開始！您是${playerColor === 'RED' ? '紅方' : '黑方'}${!isMyTurn ? ' - 對手思考中...' : ''}`;
+                
+                gameInstance = new DarkChessGame();
+            }, 1500);
+        }
+        
+        // AI Player class
+        class AIPlayer {
+            constructor(difficulty) {
+                this.difficulty = difficulty; // easy, medium, hard
+                this.thinkingTime = {
+                    easy: 1000 + Math.random() * 1000,
+                    medium: 500 + Math.random() * 1000,
+                    hard: 200 + Math.random() * 500
+                }[difficulty];
+            }
+            
+            makeMove(game) {
+                // Return a valid move: [fromRow, fromCol, toRow, toCol] or null if no moves
+                const validMoves = this.getAllValidMoves(game);
+                if (validMoves.length === 0) return null;
+                
+                // Select move based on difficulty
+                let selectedMove;
+                if (this.difficulty === 'easy') {
+                    // Random move
+                    selectedMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                } else if (this.difficulty === 'medium') {
+                    // Prefer captures, then flips, then moves
+                    const captures = validMoves.filter(move => 
+                        this.isCaptureMove(game, move[0], move[1], move[2], move[3]));
+                    if (captures.length > 0) {
+                        selectedMove = captures[Math.floor(Math.random() * captures.length)];
+                    } else {
+                        const flips = validMoves.filter(move => 
+                            !game.board[move[0]][move[1]].revealed);
+                        if (flips.length > 0) {
+                            selectedMove = flips[Math.floor(Math.random() * flips.length)];
+                        } else {
+                            selectedMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        }
+                    }
+                } else { // hard
+                    // Simple evaluation: prioritize capturing high-value pieces
+                    const scoredMoves = validMoves.map(move => ({
+                        move: move,
+                        score: this.evaluateMove(game, move[0], move[1], move[2], move[3])
+                    }));
+                    scoredMoves.sort((a, b) => b.score - a.score);
+                    // Add some randomness to avoid predictability
+                    const topMoves = scoredMoves.slice(0, Math.min(3, scoredMoves.length));
+                    selectedMove = topMoves[Math.floor(Math.random() * topMoves.length)].move;
+                }
+                
+                return selectedMove;
+            }
+            
+            getAllValidMoves(game) {
+                const moves = [];
+                
+                // Check all pieces for possible actions
+                for (let row = 0; row < game.boardSize.rows; row++) {
+                    for (let col = 0; col < game.boardSize.cols; col++) {
+                        const cell = game.board[row][col];
+                        
+                        // Can flip own unrevealed pieces
+                        if (!cell.revealed && cell.owner === game.currentPlayer) {
+                            moves.push([row, col, row, col, 'flip']); // flip action
+                        }
+                        
+                        // Can move own revealed pieces
+                        if (cell.revealed && cell.owner === game.currentPlayer) {
+                            // Check adjacent squares for move or capture
+                            const directions = [[-1,0], [1,0], [0,-1], [0,1]];
+                            for (const [dx, dy] of directions) {
+                                const newRow = row + dx;
+                                const newCol = col + dy;
+                                
+                                if (newRow >= 0 && newRow < game.boardSize.rows && 
+                                    newCol >= 0 && newCol < game.boardSize.cols) {
+                                    const targetCell = game.board[newRow][newCol];
+                                    
+                                    // Can move to unrevealed square
+                                    if (!targetCell.revealed) {
+                                        moves.push([row, col, newRow, newCol, 'move']);
+                                    }
+                                    // Can capture opponent's revealed piece
+                                    else if (targetCell.revealed && targetCell.owner !== game.currentPlayer) {
+                                        if (game.isValidCapture(row, col, newRow, newCol)) {
+                                            moves.push([row, col, newRow, newCol, 'capture']);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Check for cannon captures (long range)
+                            // Same row
+                            for (let c = 0; c < game.boardSize.cols; c++) {
+                                if (c === col) continue;
+                                const targetCell = game.board[row][c];
+                                if (targetCell.revealed && targetCell.owner !== game.currentPlayer) {
+                                    if (game.isValidCannonCapture(row, col, row, c)) {
+                                        moves.push([row, col, row, c, 'cannon_capture']);
+                                    }
+                                }
+                            }
+                            // Same column
+                            for (let r = 0; r < game.boardSize.rows; r++) {
+                                if (r === row) continue;
+                                const targetCell = game.board[r][col];
+                                if (targetCell.revealed && targetCell.owner !== game.currentPlayer) {
+                                    if (game.isValidCannonCapture(row, col, r, col)) {
+                                        moves.push([row, col, r, col, 'cannon_capture']);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return moves;
+            }
+            
+            isCaptureMove(game, fromRow, fromCol, toRow, toCol) {
+                const targetCell = game.board[toRow][toCol];
+                return targetCell && targetCell.revealed && 
+                       targetCell.owner !== game.currentPlayer;
+            }
+            
+            evaluateMove(game, fromRow, fromCol, toRow, toCol) {
+                let score = 0;
+                const targetCell = game.board[toRow][toCol];
+                
+                if (!targetCell) return score;
+                
+                // Material gain/loss
+                if (targetCell.revealed && targetCell.owner !== game.currentPlayer) {
+                    // Capturing a piece
+                    const targetValue = this.getPieceValue(targetCell.piece);
+                    score += targetValue * 10; // High value for captures
+                    
+                    // Bonus for capturing generals
+                    if (targetCell.piece.id.endsWith('G')) {
+                        score += 1000;
+                    }
+                }
+                
+                // Positional bonus (simplified)
+                // Prefer central positions
+                const centerRow = game.boardSize.rows / 2;
+                const centerCol = game.boardSize.cols / 2;
+                const distanceFromCenter = Math.abs(toRow - centerRow) + Math.abs(toCol - centerCol);
+                score -= distanceFromCenter * 2;
+                
+                // Prefer revealing own pieces (information gain)
+                if (!game.board[fromRow][fromCol].revealed) {
+                    score += 5; // Small bonus for flipping
+                }
+                
+                return score;
+            }
+            
+            getPieceValue(piece) {
+                // Simplified piece values
+                switch (piece.id) {
+                    case 'rG': case 'bG': return 1000; // General
+                    case 'rC': case 'bR': return 90;   // Chariot
+                    case 'rH': case 'bH': return 50;   // Horse
+                    case 'rP': case 'bP': return 30;   // Cannon
+                    case 'rA': case 'bA': 
+                    case 'rE': case 'bB': return 20;   // Advisor/Elephant
+                    case 'rS': case 'bZ': return 10;   // Soldier
+                    default: return 0;
+                }
+            }
+        }
+        
+        function makeAIMove() {
+            if (!gameInstance || !aiPlayer) return;
+            
+            // Get AI move
+            const move = aiPlayer.makeMove(gameInstance);
+            
+            if (!move) {
+                // No valid moves - game should be over
+                document.getElementById('status').textContent = 'AI無法移動，您獲勝！';
+                return;
+            }
+            
+            const [fromRow, fromCol, toRow, toCol, actionType] = move;
+            
+            // Execute the move based on action type
+            if (actionType === 'flip') {
+                gameInstance.flipPiece(fromRow, fromCol);
+            } else if (actionType === 'move' || actionType === 'capture' || 
+                       actionType === 'cannon_capture') {
+                // For simplicity, we treat all movements the same way
+                // The game instance will handle validation internally
+                // We'll directly manipulate the board for AI moves
+                const piece = gameInstance.board[fromRow][fromCol];
+                gameInstance.board[toRow][toCol] = piece;
+                gameInstance.board[toRow][toCol].revealed = true;
+                gameInstance.board[fromRow][fromCol] = null;
+                
+                // Switch turn
+                gameInstance.currentPlayer = 
+                    gameInstance.currentPlayer === 'RED' ? 'BLACK' : 'RED';
+                
+                // Update display
+                gameInstance.updateDisplay();
+                
+                // Check for win
+                if (gameInstance.winner) {
+                    endGame(gameInstance.winner);
+                    return;
+                }
+            }
+            
+            // Update status
+            document.getElementById('status').textContent = 
+                `您的回合（${playerColor === 'RED' ? '紅方' : '黑方'}）`;
+        }
+        
+             // Override DarkChessGame's click handler for AI and online modes
+         const originalBindEvents = DarkChessGame.prototype.bindEvents;
+         DarkChessGame.prototype.bindEvents = function() {
+             originalBindEvents.call(this);
+             
+             // Override the click handler to respect game mode
+             const boardElement = document.getElementById('gameBoard');
+             boardElement.removeEventListener('click', this.boardClickListener);
+             
+             this.boardClickListener = (e) => {
+                 // Only process clicks in offline mode or when it's our turn in online/AI
+                 if (currentGameMode === 'offline' || 
+                     (currentGameMode === 'ai' && playerColor === this.currentPlayer) ||
+                     (currentGameMode === 'online' && isMyTurn && playerColor === this.currentPlayer)) {
+                     
+                     const cell = e.target.closest('.cell');
+                     if (!cell || this.gameOver) return;
+                     
+                     const row = parseInt(cell.dataset.row);
+                     const col = parseInt(cell.dataset.col);
+                     
+                     if (this.selectedPiece) {
+                         this.handleMoveOrCapture(row, col);
+                     } else {
+                         this.handleSelectOrFlip(row, col);
+                     }
+                 }
+             };
+             
+             boardElement.addEventListener('click', this.boardClickListener);
+         };
+             
+             boardElement.addEventListener('click', this.boardClickListener);
+         };
+        
+        function endGame(winner) {
+            document.getElementById('status').textContent = 
+                winner === playerColor ? '您獲勝！' : '您敗北！';
+            isMyTurn = false;
+            
+            // Show game over overlay
+            document.getElementById('gameOverText').textContent = 
+                winner === playerColor ? '您獲勝！' : '您敗北！';
+            document.getElementById('gameOver').style.display = 'flex';
+        }
+        
+        // Surrender button handler
+        document.getElementById('surrenderBtn').addEventListener('click', function() {
+            if (currentGameMode === 'online') {
+                // In a real implementation, this would send a surrender message
+                alert('已投降');
+            }
+            endGame(playerColor === 'RED' ? 'BLACK' : 'RED');
+        });
+        
+        // New game button handler (updated)
+        document.getElementById('newGameBtn').addEventListener('click', function() {
+            initializeGame();
+        });
+        
+        // Reset button handler (updated)
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            if (gameInstance) {
+                gameInstance.initBoard(); // Reset to initial state
+                gameInstance.currentPlayer = 'RED';
+                gameInstance.selectedPiece = null;
+                gameInstance.gameOver = false;
+                gameInstance.winner = null;
+                gameInstance.updateDisplay();
+                
+                // Reset turn indicators based on mode
+                if (currentGameMode === 'offline') {
+                    document.getElementById('status').textContent = '紅方回合';
+                } else if (currentGameMode === 'ai') {
+                    document.getElementById('status').textContent = 
+                        `您是${playerColor === 'RED' ? '紅方' : '黑方'}${playerColor === 'BLACK' ? ' - AI思考中...' : ''}`;
+                    if (playerColor === 'BLACK') {
+                        setTimeout(() => makeAIMove(), 500 + Math.random() * 1000);
+                    }
+                } else if (currentGameMode === 'online') {
+                    document.getElementById('status').textContent = 
+                        isMyTurn ? '輪到您了' : '對手思考中...';
+                }
+            }
+        });
+        
+        // Play again button handler
+        document.getElementById('playAgainBtn').addEventListener('click', function() {
+            initializeGame();
+            document.getElementById('gameOver').style.display = 'none';
+        });
+        
+        // Online control functions (simulated)
+        document.getElementById('createRoomBtn').addEventListener('click', function() {
+            alert('線上功能正在開發中，請使用離線或AI模式體驗遊戲');
+        });
+        
+        document.getElementById('joinRoomBtn').addEventListener('click', function() {
+            alert('線上功能正在開發中，請使用離線或AI模式體驗遊戲');
+        });
+        
+        document.getElementById('matchmakeBtn').addEventListener('click', function() {
+            alert('線上功能正在開發中，請使用離線或AI模式體驗遊戲');
+        });
+        
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Start with offline mode by default
+            selectMode('offline');
+        });
+    </script>
+</body>
+</html>
